@@ -5,8 +5,8 @@ from __future__ import division
 import os, sys, datetime, time
 import urllib2, json, csv, multiprocessing
 import socket, re
-from nsetools import Nse
-nse = Nse()
+#from nsetools import Nse
+#nse = Nse()
 
 socket.setdefaulttimeout(10)
 os.environ['TZ'] = 'Asia/Calcutta'
@@ -38,8 +38,7 @@ utcl = 0
 DailyData = {}
 TodayCandleData = {}
 
-#Nsyms=['KPIT']
-#Nsyms=['TCS', 'INFY']
+#Nsyms=['MCDOWELL-N', 'MCLEODRUSS', 'TCS', 'INFY', 'INDIACEM']
 
 # Symbols we scan
 Nsyms=['YESBANK', 'TATASTEEL', 'STAR', 'SBIN', 'RELIANCE', 'POWERGRID', 'PETRONET', 'ONGC', 'OIL', 'MARUTI', 'M&M', 'LT', 'KTKBANK', 'KOTAKBANK', 'JSWSTEEL', 'ITC', 'IOC', 'INDUSINDBK', 'IGL', 'ICICIBANK', 'HINDUNILVR', 'HEROMOTOCO', 'HDFCBANK', 'HDFC', 'GAIL', 'FEDERALBNK', 'DCBBANK', 'DABUR', 'COLPAL', 'COALINDIA', 'CIPLA', 'CEATLTD', 'CASTROLIND', 'CANBK', 'BPCL', 'BHARTIARTL', 'BHARATFORG', 'BATAINDIA', 'BANKBARODA', 'BAJAJ-AUTO', 'AXISBANK', 'ASIANPAINT', 'ASHOKLEY', 'ARVIND', 'APOLLOTYRE', 'APOLLOHOSP', 'AMBUJACEM', 'AMARAJABAT', 'ACC', 'UNIONBANK', 'KSCL', 'ICIL', 'ZEEL', 'VEDL', 'UPL', 'ULTRACEMCO', 'UBL', 'TVSMOTOR', 'TITAN', 'TATAMTRDVR', 'TATAMOTORS', 'TATACHEM', 'SRTRANSFIN', 'SRF', 'RECLTD', 'PTC', 'PIDILITIND', 'NTPC', 'NMDC', 'NCC', 'MOTHERSUMI', 'MCLEODRUSS', 'MCDOWELL-N', 'MARICO', 'M&MFIN', 'LUPIN', 'LICHSGFIN', 'L&TFH', 'JUBLFOOD', 'JISLJALEQS', 'INDIACEM', 'HINDZINC', 'HINDPETRO', 'HINDALCO', 'HEXAWARE', 'GRASIM', 'GLENMARK', 'EXIDEIND', 'ENGINERSIN', 'BRITANNIA', 'BHEL', 'GRANULES', 'GOLDBEES', 'BANKBEES', 'WIPRO', 'VOLTAS', 'TECHM', 'TCS', 'TATAPOWER', 'TATAGLOBAL', 'TATAELXSI', 'TATACOMM', 'SIEMENS', 'RELINFRA', 'RELCAPITAL', 'PFC', 'NIITTECH', 'MINDTREE', 'IRB', 'INFY', 'INFRATEL', 'IBULHSGFIN', 'HCLTECH', 'HAVELLS', 'DISHTV', 'CONCOR', 'CESC', 'CADILAHC', 'BIOCON', 'BEML', 'BEL', 'TORNTPOWER', 'OFSS', 'KPIT', 'JINDALSTEL', 'CGPOWER', 'CENTURYTEX', 'BHARATFIN', 'AJANTPHARM', 'WOCKPHARMA', 'TORNTPHARM', 'SUNPHARMA', 'ORIENTBANK', 'IDEA', 'GODREJIND', 'DRREDDY', 'DLF', 'DIVISLAB', 'DHFL', 'BANKINDIA', 'BAJFINANCE', 'AUROPHARMA', 'TV18BRDCST', 'SYNDIBANK', 'SOUTHBANK', 'SAIL', 'RPOWER', 'RAYMOND', 'PNB', 'NHPC', 'JSWENERGY', 'IFCI', 'IDFCBANK', 'IDFC', 'IDBI', 'GMRINFRA', 'ANDHRABANK', 'ALBK', 'ADANIPOWER']
@@ -504,7 +503,6 @@ def GetDailyData(sym):
 	    sym_file_handle.close()
 	    if len(data_cache) > 0:
 		return data_cache
-    #print 'Returning'; return
     data = {}
     content = GetURLData(ndays+8, sym, False)
     for d in content:
@@ -533,7 +531,6 @@ def GetScripCandleData(days, sym):
 	    sym_file_handle.close()
 	    if len(data_cache) > 0:
 		return data_cache
-    #print 'Returning'; return
     data = {}
     content = GetURLData(days, sym, True)
     if content is None:
@@ -628,7 +625,7 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
     if sym not in PastData.keys():
 	return
 
-    c2 = float(cdata[1][idx_close])
+    #c2 = float(cdata[1][idx_close])
     #h2 = float(cdata[1][idx_high])
 
     if o1 == l1 or o1 == h1:
@@ -637,20 +634,19 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
 	pclose = PastData[sym]['CLOSE']
 	pcpt = abs((o1-pclose)/pclose)*100
 	vcpt = (c_candle_vol/pvol)*100
-	if pcpt < PriceInc:
+	if pcpt < PriceInc or vcpt < VolInc:
 	    return
 	#nse_quote = nse.get_quote(sym)
 	#cmp = nse_quote['lastPrice']
-	cmp = c2
+	#cmp = c2
 	#cmp = GetNSEPrice(sym)
-	if o1 == l1 and pclose < o1:
-	    if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-		print 'Buy:', sym, o1, l1, o1, h1
-		BuySyms[sym] = cmp
-	elif o1 == h1 and pclose > o1:
-	    if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
-		print 'Sell:', sym, o1, l1, o1, h1
-		SellSyms[sym] = cmp
+	values = [c1, vcpt]
+	if o1 == l1 and pclose <= o1:
+	    #if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
+		BuySyms[sym] = values
+	elif o1 == h1 and pclose >= o1:
+	    #if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
+		SellSyms[sym] = values
 
 def LoadPastData():
     global utc
@@ -658,7 +654,6 @@ def LoadPastData():
 
     if len(sys.argv) > 1 and '--yesterday' in sys.argv:
 	ndays=6
-	print ndays
 	dt = datetime.datetime.today() - datetime.timedelta(3);
     else:
 	dt = datetime.datetime.today();
@@ -671,13 +666,8 @@ def LoadPastData():
     dtl = datetime.datetime(y, m, d, 15, 30, 0)
     utcl = dtl.strftime("%s")
 
-    print GetHumanDate(utc)
-    print GetHumanDate(utcl)
-
     jobs = []
-    #Nsyms.append('NIFTY')
     for sym in Nsyms:
-	print sym
 	p = multiprocessing.Process(target=GetPastData, args=(sym, PastData))
 	jobs.append(p)
 	p.start()
@@ -693,7 +683,6 @@ def FindOHOLStocks():
 
     if len(sys.argv) > 1 and '--yesterday' in sys.argv[1]:
 	ndays=6
-	#print ndays
 	dt = datetime.datetime.today() - datetime.timedelta(2);
     else:
 	dt = datetime.datetime.today();
@@ -705,9 +694,6 @@ def FindOHOLStocks():
     utc = dt.strftime("%s")
     dtl = datetime.datetime(y, m, d, 15, 30, 0)
     utcl = dtl.strftime("%s")
-
-    #print GetHumanDate(utc)
-    #print GetHumanDate(utcl)
 
     # Collect Nifty Candle data for 1 year and today
     NiftyIndexDailyData = GetDailyData('NIFTY')

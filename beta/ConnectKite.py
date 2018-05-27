@@ -35,7 +35,7 @@ def GetKiteToken():
 
     time.sleep(5)
 
-    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/BETA/1.png')
+    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/beta/1.png')
 
     # Enter Username
     try:
@@ -55,7 +55,7 @@ def GetKiteToken():
 	print 'Unable to enter password'
 	return None
     
-    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/BETA/2.png')
+    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/beta/2.png')
     # Submit first page/form to move on to next password screen
     try:
 	elem = browser.find_element_by_xpath("//button[@type='submit']")
@@ -71,7 +71,7 @@ def GetKiteToken():
 	try:
 	    elem = WebDriverWait(browser, 30).until(EC.presence_of_element_located((By.ID, 'container')))
 	    time.sleep(5)
-	    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/BETA/3.png')
+	    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/beta/3.png')
 	    break
 	except:
 	    print "Page dint load after 1st form submission"
@@ -90,7 +90,7 @@ def GetKiteToken():
 		#print 'Password entered'
 		break
     
-    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/BETA/4.png')
+    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/beta/4.png')
     
     # Finally submit the 2nd page/form and complete login phase
     try:
@@ -102,7 +102,7 @@ def GetKiteToken():
 	return None
     
     time.sleep(5)
-    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/BETA/5.png')
+    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/beta/5.png')
     
     KiteLink='https://kite.trade/connect/login?api_key=%s' % API_KEY
     #browser.set_page_load_timeout(5)
@@ -112,7 +112,7 @@ def GetKiteToken():
     wait = WebDriverWait(browser, 5)
     wait.until(lambda browser: browser.current_url != KiteLink)
     rurl = browser.current_url
-    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/BETA/6.png')
+    #browser.save_screenshot('/home/somasm/GITRepo/PythonTrade/beta/6.png')
 
     token=''
     m = re.search('.*request_token=([^&]*)&.*', rurl)

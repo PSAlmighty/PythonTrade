@@ -5,8 +5,8 @@ from __future__ import division
 import os, sys, datetime, time
 import urllib2, json, csv, multiprocessing
 import socket, re
-from nsetools import Nse
-nse = Nse()
+#from nsetools import Nse
+#nse = Nse()
 
 socket.setdefaulttimeout(10)
 os.environ['TZ'] = 'Asia/Calcutta'
@@ -38,7 +38,6 @@ utcl = 0
 DailyData = {}
 TodayCandleData = {}
 
-#Nsyms=['KPIT']
 #Nsyms=['MCDOWELL-N', 'MCLEODRUSS', 'TCS', 'INFY', 'INDIACEM']
 
 # Symbols we scan
@@ -626,7 +625,7 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
     if sym not in PastData.keys():
 	return
 
-    c2 = float(cdata[1][idx_close])
+    #c2 = float(cdata[1][idx_close])
     #h2 = float(cdata[1][idx_high])
 
     if o1 == l1 or o1 == h1:
@@ -635,26 +634,27 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
 	pclose = PastData[sym]['CLOSE']
 	pcpt = abs((o1-pclose)/pclose)*100
 	vcpt = (c_candle_vol/pvol)*100
-	if pcpt < PriceInc:
+	if pcpt < PriceInc or vcpt < VolInc:
 	    return
 	#nse_quote = nse.get_quote(sym)
 	#cmp = nse_quote['lastPrice']
-	cmp = c2
+	#cmp = c2
 	#cmp = GetNSEPrice(sym)
-	if o1 == l1 and pclose < o1:
-	    if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-		BuySyms[sym] = cmp+(cmp*(0.1/100))
-	elif o1 == h1 and pclose > o1:
-	    if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
-		SellSyms[sym] = cmp-(cmp*(0.1/100))
+	values = [c1, vcpt]
+	if o1 == l1 and pclose <= o1:
+	    #if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
+		BuySyms[sym] = values
+	elif o1 == h1 and pclose >= o1:
+	    #if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
+		SellSyms[sym] = values
 
 def LoadPastData():
     global utc
     global utcl
 
-    if len(sys.argv) > 1 and sys.argv[1] == '--yesterday':
+    if len(sys.argv) > 1 and '--yesterday' in sys.argv:
 	ndays=6
-	dt = datetime.datetime.today() - datetime.timedelta(1);
+	dt = datetime.datetime.today() - datetime.timedelta(3);
     else:
 	dt = datetime.datetime.today();
     y = int(dt.strftime("%Y"))
@@ -667,7 +667,6 @@ def LoadPastData():
     utcl = dtl.strftime("%s")
 
     jobs = []
-    #Nsyms.append('NIFTY')
     for sym in Nsyms:
 	p = multiprocessing.Process(target=GetPastData, args=(sym, PastData))
 	jobs.append(p)

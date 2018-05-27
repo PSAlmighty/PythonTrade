@@ -11,7 +11,7 @@ OHOL_PATH="%s" % os.getcwd()
 sys.path.append(OHOL_PATH)
 
 from credentials import API_KEY, API_SECRET_KEY
-from ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, VolInc
+from test_ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, VolInc
 from ConnectKite import GetKiteToken
 
 # Important parameters
@@ -139,16 +139,10 @@ if __name__ == '__main__':
 	if len(sys.argv) > 1 and '--test' not in sys.argv:
 	    while True:
 		tdt = datetime.datetime.today()
-		hr = int(tdt.strftime("%H"))
 		min = int(tdt.strftime("%M"))
-		if hr == 9:
-		    if min > 16:
-			break
-		    else:
-			print >>fhandle, "Waiting for min to become 17"
-			time.sleep(2)
-		else:
-		    break # You could be running after market hours
+		if min > 1:
+		    break
+		time.sleep(2)
 
     (BuySyms, SellSyms) = FindOHOLStocks()
     
