@@ -1,0 +1,3 @@
+for f in ConnectKite.py  credentials.py printOHOL.py   test_ohol.pyc ConnectKite.pyc credentials.pyc printOHOLtest.py ExecuteOHOL.py  ohol.py   test.ExecuteOHOL.py cleanup_chrome.sh ohol.pyc   test_ohol.py; do
+    scp somasm@35.200.204.131:/home/somasm/GITRepo/PythonTrade/BETA/$f .
+done
