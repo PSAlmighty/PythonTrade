@@ -1,41 +1,24 @@
-#!/usr/bin/env python2.7
-
 from __future__ import division
 
-import os, sys, datetime, time
-import urllib2, csv, multiprocessing
+import datetime, urllib2, csv, multiprocessing
+from threading import Timer
+"""
 from kiteconnect.connect import KiteConnect
-import logging
+"""
+import logging, time
 
-OHOL_PATH="%s" % os.getcwd()
-sys.path.append(OHOL_PATH)
-
-from credentials import API_KEY, API_SECRET_KEY
-from ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, VolInc
-from ConnectKite import GetKiteToken
+from ohol import FindOHOLStocks, MIS
 
 # Important parameters
-CAPITAL=14000
-#cap=CAPITAL*(80/100) # 80% of whole capital
-cap=CAPITAL
-SLPct=(1.2/100)
-ProfitPct=(1.2/100)
-TSLPct=(0.5/100)
-
-DRY_RUN=False
+CAPITAL=10000
+cap=CAPITAL*(80/100)
+SLPct=(1.1/100)
+ProfitPct=(1.1/100)
 
 def GetTicks(price):
     tgt=round(0.05 * round(float(price * ProfitPct)/0.05), 2)
     sl=round(0.05 * round(float(price * SLPct)/0.05), 2)
-    tsl=round(0.05 * round(float(price * TSLPct)/0.05), 2)
-    return (tgt, sl, tsl)
-
-def GetAbsolutes(price):
-    tgt=round(float(price * ProfitPct))
-    sl=round(float(price * SLPct))
-    tsl=round(float(price * TSLPct))
-    if tsl == 0:
-        tsl=1
+    tsl=round(0.05 * round(float(price * 0.005)/0.05), 2)
     return (tgt, sl, tsl)
 
 def PlaceOrder(call, sym, rprice, Orders):
@@ -43,17 +26,17 @@ def PlaceOrder(call, sym, rprice, Orders):
     price = round(float(rprice), 2)
 
     numberOfStocks = int((cps*int(MIS[sym]))/price)
+    #print "%s %d %s @ %.2f (Leverage=%s applied)" % (call, numberOfStocks, sym, price, MIS[sym])
 
     # Get Ticks values for SqOff, SL, and Trailing SL used for BO
-    (tgt, sl, tsl) = GetAbsolutes(price)
+    (tgt, sl, tsl) = GetTicks(price)
 
+    i=1
     # Place a BO order
     if (call == 'Buy'):
-	if DRY_RUN:
-	    print "Buy %d %s @ %d" % (numberOfStocks, sym, rprice)
-	else:
-	    try:
-		order_id = kite.place_order(tradingsymbol=sym,
+	try:
+	    """
+	    order_id = kite.place_order(tradingsymbol=sym,
 	                                exchange=kite.EXCHANGE_NSE,
 	                                transaction_type=kite.TRANSACTION_TYPE_BUY,
 	                                quantity=numberOfStocks,
@@ -65,19 +48,19 @@ def PlaceOrder(call, sym, rprice, Orders):
 	                                stoploss=sl,
 	                                trailing_stoploss=tsl
 	                                )
-		OrderDetails = [price, tgt, sl, tsl]
-		Orders[order_id] = OrderDetails
-		print >>fhandle, "Buy[%s]: OrderId=%s, Price=%.2f, TGTTick=%.2f, SLTick=%.2f, TSLTick=%.2f" % (sym, str(order_id), Orders[order_id][0], Orders[order_id][1], Orders[order_id][2], Orders[order_id][3])
-	    except Exception as e:
-		print >>fhandle, "Buy Order placement failed: {}".format(e)
-		print >>fhandle, "Failed to place buy order for  %d %s @ %d" % (numberOfStocks, sym, rprice)
-		logging.info("Buy Order placement failed: {}".format(e))
+	    """
+	    order_id = str(i)
+	    OrderDetails = [price, tgt, sl, tsl]
+	    Orders[order_id] = OrderDetails
+	    print Orders[str(1)]
+	    print("Buy Order Id: " + str(order_id) + ", Price: " + str(Orders[order_id][0])  + ", SQTick: " + str(Orders[order_id][1]) + ", SLTick: " + str(Orders[order_id][2]) + ", TSLTick: " + str(Orders[order_id][3]))
+	    i+=1
+	except Exception as e:
+	    logging.info("Order placement failed: {}".format(e))
     elif (call == 'Sell'):
-	if DRY_RUN:
-	    print "Sell %d %s @ %d" % (numberOfStocks, sym, rprice)
-	else:
-	    try:
-		order_id = kite.place_order(tradingsymbol=sym,
+	try:
+	    """
+	    order_id = kite.place_order(tradingsymbol=sym,
 	                                exchange=kite.EXCHANGE_NSE,
 	                                transaction_type=kite.TRANSACTION_TYPE_SELL,
 	                                quantity=numberOfStocks,
@@ -89,113 +72,48 @@ def PlaceOrder(call, sym, rprice, Orders):
 	                                stoploss=sl,
 	                                trailing_stoploss=tsl
 	                                )
-		OrderDetails = [price, tgt, sl, tsl]
-		Orders[order_id] = OrderDetails
-		print >>fhandle, "Sell[%s]: OrderId=%s, Price=%.2f, TGTTick=%.2f, SLTick=%.2f, TSLTick=%.2f" % (sym, str(order_id), Orders[order_id][0], Orders[order_id][1], Orders[order_id][2], Orders[order_id][3])
-	    except Exception as e:
-		print >>fhandle, "Sell Order placement failed: {}".format(e)
-		print >>fhandle, "Failed to place sell order for %d %s @ %d" % (numberOfStocks, sym, rprice)
-		logging.info("Sell Order placement failed: {}".format(e))
-
-if __name__ == '__main__':
-    if len(sys.argv) > 1 and '--test' in sys.argv:
-	DRY_RUN=True
-
-    if not DRY_RUN:
-	order_info_file = "/home/somasm/GITRepo/PythonTrade/beta/Orders/%s.orders" % TODAY
-	fhandle = open(order_info_file, 'w')
-	kite = KiteConnect(api_key=API_KEY)
-
-	session_token = ''
-	AutoFetch=True
-	if AutoFetch == True:
-	    try_count=1
-	    while try_count < 6:
-		try:
-		    print >>fhandle, "GetKiteToken(): Attempt %d" % try_count
-		    session_token = GetKiteToken()
-		    if session_token is None or session_token == '':
-			try_count+=1
-		    else:
-			break;
-		except:
-		    try_count+=1
-	else:
-	    raw_input('Add token to token file')
-	    token_file = "/Users/somasm/Pangu/ZD-Auto/PythonTrade/beta/token"
-	    with open(token_file, 'r') as token_file_handle:
-		session_token = token_file_handle.readlines()[0].strip()
-		token_file_handle.close()
-
-	print >>fhandle, "RequestToken=%s" % session_token
-
-	# Redirect the user to the login url obtained
-	# from kite.login_url(), and receive the request_token
-	# from the registered redirect url after the login flow.
-	# Once you have the request_token, obtain the access_token as follows.
-	data = kite.generate_session("%s"%session_token, api_secret=API_SECRET_KEY)
-	kite.set_access_token(data["access_token"])
-
-	if len(sys.argv) > 1 and '--test' not in sys.argv:
-	    while True:
-		tdt = datetime.datetime.today()
-		hr = int(tdt.strftime("%H"))
-		min = int(tdt.strftime("%M"))
-		if hr == 9:
-		    if min > 16:
-			break
-		    else:
-			print >>fhandle, "Waiting for min to become 17"
-			time.sleep(2)
-		else:
-		    break # You could be running after market hours
-
-    (BuySyms, SellSyms) = FindOHOLStocks()
+	    """
+	    order_id = str(i)
+	    i+=1
+	    OrderDetails = [price, tgt, sl, tsl]
+	    Orders[order_id] = OrderDetails
+	    print Orders[str(1)]
+	    print("Sell Order Id: " + str(order_id) + ", Price: " + str(Orders[order_id][0])  + ", SQTick: " + str(Orders[order_id][1]) + ", SLTick: " + str(Orders[order_id][2]) + ", TSLTick: " + str(Orders[order_id][3]))
+	except Exception as e:
+	    logging.info("Order placement failed: {}".format(e))
     
-    if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
-        jobs1 = []
-        manager = multiprocessing.Manager()
+#(BuySyms, SellSyms) = FindOHOLStocks()
+BuySyms = {'IDEA': 154.4}
+SellSyms = {'HCLTECH': 930.1}
 
-        cps = int(cap/(len(BuySyms.keys())+len(SellSyms.keys())))
+if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
+    jobs = []
+    manager = multiprocessing.Manager()
 
-	PARALLEL=False
-	if PARALLEL:
-	    if(len(BuySyms.keys())>0):
-		BuyOrders = manager.dict()
-		for bsym in BuySyms.keys():
-		    p = multiprocessing.Process(target=PlaceOrder, args=('Buy', bsym, BuySyms[bsym], BuyOrders))
-		    jobs1.append(p)
-		    p.start()
+    cps = int(cap/(len(BuySyms.keys())+len(SellSyms.keys())))
 
-	    if(len(SellSyms.keys())>0):
-		SellOrders = manager.dict()
-		for ssym in SellSyms.keys():
-		    p = multiprocessing.Process(target=PlaceOrder, args=('Sell', ssym, SellSyms[ssym], SellOrders))
-		    jobs1.append(p)
-		    p.start()
+    """
+    kite = KiteConnect(api_key="your_api_key")
 
-	    for proc in jobs1:
-		proc.join()
-	else:
-	    syms = ['NSE:'+sym for sym in BuySyms.keys()] + ['NSE:'+sym for sym in SellSyms.keys()]
-	    cmps = kite.ltp(syms)
-	    if(len(BuySyms.keys())>0):
-		BuyOrders = {}
-		for bsym in BuySyms.keys():
-		    c1 = float(BuySyms[bsym][0])
-		    vcpt = int(BuySyms[bsym][1])
-		    cmp = float((cmps['NSE:%s'%bsym])['last_price'])
-		    if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-			bprice = cmp+(cmp*(0.1/100))
-			PlaceOrder('Buy', bsym, bprice, BuyOrders)
+    # Redirect the user to the login url obtained
+    # from kite.login_url(), and receive the request_token
+    # from the registered redirect url after the login flow.
+    # Once you have the request_token, obtain the access_token as follows.
+    data = kite.generate_session("request_token_here", api_secret="your_secret")
+    kite.set_access_token(data["access_token"])
+    """
 
-	    if(len(SellSyms.keys())>0):
-		SellOrders = {}
-		for ssym in SellSyms.keys():
-		    c1 = float(SellSyms[ssym][0])
-		    vcpt = int(SellSyms[ssym][1])
-		    cmp = float((cmps['NSE:%s'%ssym])['last_price'])
-		    if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
-			sprice = cmp-(cmp*(0.1/100))
-			PlaceOrder('Sell', ssym, sprice, SellOrders)
+    BuyOrders = manager.dict()
+    for bsym in BuySyms.keys():
+        p = multiprocessing.Process(target=PlaceOrder, args=('Buy', bsym, BuySyms[bsym], BuyOrders))
+        jobs.append(p)
+        p.start()
 
+    SellOrders = manager.dict()
+    for ssym in SellSyms.keys():
+        p = multiprocessing.Process(target=PlaceOrder, args=('Sell', ssym, SellSyms[ssym], SellOrders))
+        jobs.append(p)
+        p.start()
+
+    for proc in jobs:
+        proc.join()

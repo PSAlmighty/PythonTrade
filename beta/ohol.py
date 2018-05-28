@@ -2,20 +2,16 @@
 
 from __future__ import division
 
-import os, sys, datetime, time
-import urllib2, json, csv, multiprocessing
-import socket, re
-#from nsetools import Nse
-#nse = Nse()
+import os, sys, datetime
+import urllib2, csv, multiprocessing
+import socket
+from nsetools import Nse
+nse = Nse()
 
-socket.setdefaulttimeout(10)
+#socket.setdefaulttimeout(100)
 os.environ['TZ'] = 'Asia/Calcutta'
 
-manager = multiprocessing.Manager()
-PastData = manager.dict()
-
 # Important Parameters
-TODAY = datetime.datetime.today().strftime("%Y-%m-%d")
 CAPITAL=50000
 cap=CAPITAL*(80/100)
 Interval = 60
@@ -25,11 +21,11 @@ Vol_buffer = (0.2/100)
 Vol5_buffer = (0.3/100)
 
 # Candle index
-idx_close = 0
-idx_high = 1
-idx_low = 2
-idx_open = 3
-idx_vol = 4
+close = 0
+high = 1
+low = 2
+open = 3
+vol = 4
 
 # Variables
 ndays = 0
@@ -38,7 +34,8 @@ utcl = 0
 DailyData = {}
 TodayCandleData = {}
 
-#Nsyms=['MCDOWELL-N', 'MCLEODRUSS', 'TCS', 'INFY', 'INDIACEM']
+#Nsyms=['VEDL']
+#Nsyms=['EICHERMOT', 'UNIONBANK', 'DRREDDY', 'MCLEODRUSS']
 
 # Symbols we scan
 Nsyms=['YESBANK', 'TATASTEEL', 'STAR', 'SBIN', 'RELIANCE', 'POWERGRID', 'PETRONET', 'ONGC', 'OIL', 'MARUTI', 'M&M', 'LT', 'KTKBANK', 'KOTAKBANK', 'JSWSTEEL', 'ITC', 'IOC', 'INDUSINDBK', 'IGL', 'ICICIBANK', 'HINDUNILVR', 'HEROMOTOCO', 'HDFCBANK', 'HDFC', 'GAIL', 'FEDERALBNK', 'DCBBANK', 'DABUR', 'COLPAL', 'COALINDIA', 'CIPLA', 'CEATLTD', 'CASTROLIND', 'CANBK', 'BPCL', 'BHARTIARTL', 'BHARATFORG', 'BATAINDIA', 'BANKBARODA', 'BAJAJ-AUTO', 'AXISBANK', 'ASIANPAINT', 'ASHOKLEY', 'ARVIND', 'APOLLOTYRE', 'APOLLOHOSP', 'AMBUJACEM', 'AMARAJABAT', 'ACC', 'UNIONBANK', 'KSCL', 'ICIL', 'ZEEL', 'VEDL', 'UPL', 'ULTRACEMCO', 'UBL', 'TVSMOTOR', 'TITAN', 'TATAMTRDVR', 'TATAMOTORS', 'TATACHEM', 'SRTRANSFIN', 'SRF', 'RECLTD', 'PTC', 'PIDILITIND', 'NTPC', 'NMDC', 'NCC', 'MOTHERSUMI', 'MCLEODRUSS', 'MCDOWELL-N', 'MARICO', 'M&MFIN', 'LUPIN', 'LICHSGFIN', 'L&TFH', 'JUBLFOOD', 'JISLJALEQS', 'INDIACEM', 'HINDZINC', 'HINDPETRO', 'HINDALCO', 'HEXAWARE', 'GRASIM', 'GLENMARK', 'EXIDEIND', 'ENGINERSIN', 'BRITANNIA', 'BHEL', 'GRANULES', 'GOLDBEES', 'BANKBEES', 'WIPRO', 'VOLTAS', 'TECHM', 'TCS', 'TATAPOWER', 'TATAGLOBAL', 'TATAELXSI', 'TATACOMM', 'SIEMENS', 'RELINFRA', 'RELCAPITAL', 'PFC', 'NIITTECH', 'MINDTREE', 'IRB', 'INFY', 'INFRATEL', 'IBULHSGFIN', 'HCLTECH', 'HAVELLS', 'DISHTV', 'CONCOR', 'CESC', 'CADILAHC', 'BIOCON', 'BEML', 'BEL', 'TORNTPOWER', 'OFSS', 'KPIT', 'JINDALSTEL', 'CGPOWER', 'CENTURYTEX', 'BHARATFIN', 'AJANTPHARM', 'WOCKPHARMA', 'TORNTPHARM', 'SUNPHARMA', 'ORIENTBANK', 'IDEA', 'GODREJIND', 'DRREDDY', 'DLF', 'DIVISLAB', 'DHFL', 'BANKINDIA', 'BAJFINANCE', 'AUROPHARMA', 'TV18BRDCST', 'SYNDIBANK', 'SOUTHBANK', 'SAIL', 'RPOWER', 'RAYMOND', 'PNB', 'NHPC', 'JSWENERGY', 'IFCI', 'IDFCBANK', 'IDFC', 'IDBI', 'GMRINFRA', 'ANDHRABANK', 'ALBK', 'ADANIPOWER']
@@ -489,20 +486,20 @@ def GetURLData(p, sym, candle):
 	url = 'https://finance.google.com/finance/getprices?x=NSE&q=%s&f=d,c,h,l,o,v&p=%sd' % (sym.replace('&','%26'), p)
     else:
 	url = 'https://finance.google.com/finance/getprices?x=NSE&q=%s&f=d,c,h,l,o,v&p=%sd&i=%s' % (sym.replace('&','%26'), p, Interval)
-    req = urllib2.Request(url)
-    response = urllib2.urlopen(req)
-    content = csv.reader(response.read().splitlines()[7:])
-    return content
+    try:
+	req = urllib2.Request(url)
+	response = urllib2.urlopen(req)
+	content = csv.reader(response.read().splitlines()[7:])
+	return content
+    except HTTPError as e:
+	print 'The server couldn\'t fulfill the request.'
+	print 'Error code: ', e.code
+    except URLError as e:
+	print 'We failed to reach a server.'
+	print 'Reason: ', e.reason
 
 # Get 1 year data for a given symbol
 def GetDailyData(sym):
-    sym_file = "DATA/%s.1Y.json" % sym
-    if os.path.exists(sym_file):
-	with open(sym_file, 'r') as sym_file_handle:
-	    data_cache = json.load(sym_file_handle)
-	    sym_file_handle.close()
-	    if len(data_cache) > 0:
-		return data_cache
     data = {}
     content = GetURLData(ndays+8, sym, False)
     for d in content:
@@ -512,25 +509,10 @@ def GetDailyData(sym):
 	else:
 	    llutc = str(int(lutc)+(int(d[0])*86400))
 	    data[llutc] = d[1:]
-    if not os.path.exists(TODAY):
-	os.mkdir(TODAY)
-    sym_file = "%s/%s.1Y.json" % (TODAY, sym)
-    if os.path.exists(sym_file):
-	os.rename(sym_file, "%s.moved" % sym_file)
-    with open(sym_file, 'w') as sym_file_handle:
-	json.dump(data, sym_file_handle)
-	sym_file_handle.close()
     return data
 
 # Get candle data for a given symbol for given days
 def GetScripCandleData(days, sym):
-    sym_cache_file = "DATA/%s.%sCandles.json" % (sym, days)
-    if os.path.exists(sym_cache_file):
-	with open(sym_cache_file, 'r') as sym_file_handle:
-	    data_cache = json.load(sym_file_handle)
-	    sym_file_handle.close()
-	    if len(data_cache) > 0:
-		return data_cache
     data = {}
     content = GetURLData(days, sym, True)
     if content is None:
@@ -553,13 +535,6 @@ def GetScripCandleData(days, sym):
 		return {}
 	    #print 'Appending to', GetHumanDate(lutc)
 	    data[lutc].append(d[1:])
-    if not os.path.exists(TODAY):
-	os.mkdir(TODAY)
-    sym_file = "%s/%s.%sCandles.json" % (TODAY, sym, days)
-    if os.path.exists(sym_file):
-	os.rename(sym_file, "%s.moved" % sym_file)
-    with open(sym_file, 'w') as sym_file_handle:
-	json.dump(data, sym_file_handle)
     return data
 
 # Return valid previous time/day for a given time/day
@@ -577,15 +552,6 @@ def GetPrevUTC(data, UTC):
 def GetHumanDate(utc):
     return datetime.datetime.fromtimestamp(int(utc)).strftime('%Y-%m-%d %H:%M:%S')
     #return datetime.datetime.fromtimestamp(int(utc)).strftime('%Y-%m-%d')
-
-def GetNSEPrice(sym):
-    url = 'http://nseindia.com/live_market/dynaContent/live_watch/get_quote/GetQuote.jsp?symbol=%s&illiquid=0' % sym
-    req = urllib2.Request(url)
-    req.add_header('User-Agent', 'Mozilla/5.0')
-    response = urllib2.urlopen(req)
-    nse_quote = response.read()
-    m = re.search('.*,"lastPrice":"([^"]*)".*', nse_quote)
-    return float(m.group(1).replace(",",""))
 
 # Get previous day close price, and previous day traded vol for a given symbol
 def GetPastData(sym, PastData):
@@ -605,83 +571,53 @@ def GetPastData(sym, PastData):
 # Shortlist each symbol based on the startegy
 def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
     # Collect today's Candle data for each symbol
-    TodayCandleData[sym] = GetScripCandleData(ndays, sym)
-    if utc not in TodayCandleData[sym].keys():
-	while True:
-	    tdt = datetime.datetime.today()
-	    min = int(tdt.strftime("%M"))
-	    if min > 16:
-		break
-	    time.sleep(10)
-        TodayCandleData[sym] = GetScripCandleData(ndays, sym)
+    loop_count=0
+    while True:
+	TodayCandleData[sym] = GetScripCandleData(ndays, sym)
+	if utc not in TodayCandleData[sym].keys():
+	    if loop_count == 3:
+		return
+	else:
+	    break
+	time.sleep(60)
+	loop_count+=1
 
     cdata = TodayCandleData[sym][utc]
 
-    h1 = float(cdata[0][idx_high])
-    l1 = float(cdata[0][idx_low])
-    o1 = float(cdata[0][idx_open])
+    h1 = float(cdata[0][high])
+    l1 = float(cdata[0][low])
+    o1 = float(cdata[0][open])
 
-    c_candle_vol=int(cdata[0][idx_vol])
+    c_candle_vol=int(cdata[0][vol])
     if sym not in PastData.keys():
 	return
 
-    #c2 = float(cdata[1][idx_close])
-    #h2 = float(cdata[1][idx_high])
+    #c2 = float(cdata[1][close])
+    #h2 = float(cdata[1][high])
 
     if o1 == l1 or o1 == h1:
-	c1 = float(cdata[0][idx_close])
+	c1 = float(cdata[0][close])
 	pvol = PastData[sym]['VOL']
 	pclose = PastData[sym]['CLOSE']
 	pcpt = abs((o1-pclose)/pclose)*100
 	vcpt = (c_candle_vol/pvol)*100
-	if pcpt < PriceInc or vcpt < VolInc:
+	if pcpt < PriceInc:
 	    return
-	#nse_quote = nse.get_quote(sym)
-	#cmp = nse_quote['lastPrice']
-	#cmp = c2
-	#cmp = GetNSEPrice(sym)
-	values = [c1, vcpt]
-	if o1 == l1 and pclose <= o1:
-	    #if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-		BuySyms[sym] = values
-	elif o1 == h1 and pclose >= o1:
-	    #if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
-		SellSyms[sym] = values
-
-def LoadPastData():
-    global utc
-    global utcl
-
-    if len(sys.argv) > 1 and '--yesterday' in sys.argv:
-	ndays=6
-	dt = datetime.datetime.today() - datetime.timedelta(3);
-    else:
-	dt = datetime.datetime.today();
-    y = int(dt.strftime("%Y"))
-    m = int(dt.strftime("%m"))
-    d = int(dt.strftime("%d"))
-
-    dt = datetime.datetime(y, m, d, 0, 0, 0)
-    utc = dt.strftime("%s")
-    dtl = datetime.datetime(y, m, d, 15, 30, 0)
-    utcl = dtl.strftime("%s")
-
-    jobs = []
-    for sym in Nsyms:
-	p = multiprocessing.Process(target=GetPastData, args=(sym, PastData))
-	jobs.append(p)
-	p.start()
-
-    for proc in jobs:
-	proc.join()
-
+	nse_quote = nse.get_quote(sym)
+	cmp = nse_quote['lastPrice']
+	if pclose < o1:
+	    if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
+		BuySyms[sym] = cmp
+	elif pclose > o1:
+	    if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
+		SellSyms[sym] = cmp
 
 def FindOHOLStocks():
     global utc
     global utcl
     global ndays
 
-    if len(sys.argv) > 1 and '--yesterday' in sys.argv[1]:
+    if len(sys.argv) > 1 and sys.argv[1] == '--yesterday':
 	ndays=6
 	dt = datetime.datetime.today() - datetime.timedelta(2);
     else:
@@ -715,28 +651,24 @@ def FindOHOLStocks():
 	return ({},{})
 
     jobs = []
-    GetOfflineData = False
-    if GetOfflineData == False:
-	for sym in Nsyms:
-	    p = multiprocessing.Process(target=GetPastData, args=(sym, PastData))
-	    jobs.append(p)
-	    p.start()
+    manager = multiprocessing.Manager()
+    PastData = manager.dict()
+    for sym in Nsyms:
+	p = multiprocessing.Process(target=GetPastData, args=(sym, PastData))
+	jobs.append(p)
+	p.start()
 
-	for proc in jobs:
-	    proc.join()
+    for proc in jobs:
+	proc.join()
 
     jobs = []
     BuySyms = manager.dict()
     SellSyms = manager.dict()
 
-    count=1
     for sym in Nsyms:
 	p = multiprocessing.Process(target=OHOLStrategy, args=(sym, PastData, BuySyms, SellSyms))
 	jobs.append(p)
 	p.start()
-	if count == 50:
-	    time.sleep(2)
-	    count=1
 
     for proc in jobs:
 	proc.join()
