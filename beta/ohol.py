@@ -496,7 +496,7 @@ def GetURLData(p, sym, candle):
 	url = 'https://finance.google.com/finance/getprices?x=NSE&q=%s&f=d,c,h,l,o,v&p=%sd' % (sym.replace('&','%26'), p)
     else:
 	url = 'https://finance.google.com/finance/getprices?x=NSE&q=%s&f=d,c,h,l,o,v&p=%sd&i=%s' % (sym.replace('&','%26'), p, Interval)
-    log_it("Getting data for %s from %s" % (sym, url))
+    log_it("Getting %s day(s) data for %s from %s" % (p, sym, url))
     req = urllib2.Request(url)
     response = urllib2.urlopen(req)
     content = csv.reader(response.read().splitlines()[7:])

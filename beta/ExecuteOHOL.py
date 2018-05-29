@@ -26,10 +26,14 @@ DRY_RUN=False
 def log_it(log_str):
     print("%s: %s" % (datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S"), log_str))
 
+Tick=(5/100)
+def RoundToTick(price):
+    return round(price/Tick)*Tick
+
 def GetAbsolutes(price):
-    tgt=round((float(price) * ProfitPct)/(5/100))*(5/100)
-    sl=round((float(price) * SLPct)/(5/100))*(5/100)
-    tsl=round((float(price) * TSLPct)/(5/100))*(5/100)
+    tgt=RoundToTick((float(price) * ProfitPct))
+    sl=RoundToTick((float(price) * SLPct))
+    tsl=RoundToTick((float(price) * TSLPct))
     if tsl < 1:
         tsl=1
     return (tgt, sl, tsl)
@@ -86,13 +90,13 @@ def PlaceOrder(call, sym, rprice, Orders):
 	                                )
 		OrderDetails = [price, tgt, sl, tsl]
 		Orders[order_id] = OrderDetails
-		log_it("Sell[%s]: OrderId=%s, Price=%.2f, TGTTick=%.2f, SLTick=%.2f, TSLTick=%.2f" % (sym, str(order_id), Orders[order_id][0], Orders[order_id][1], Orders[order_id][2], Orders[order_id][3]))
+		log_it("Sell[%s]: OrderId=%s, Price=%.2f, TGTPoints=%.2f, SLPoints=%.2f, TSLPoints=%.2f" % (sym, str(order_id), Orders[order_id][0], Orders[order_id][1], Orders[order_id][2], Orders[order_id][3]))
 	    except Exception as e:
 		log_it("Sell Order placement failed: {}".format(e))
 		log_it("Failed to place sell order for %d Qty of %s @ %d (Price=%.2f, TGT=%.2f, SL=%.2f, TSL=%.2f)" % (numberOfStocks, sym, rprice, Orders[order_id][0], Orders[order_id][1], Orders[order_id][2], Orders[order_id][3]))
 
 if __name__ == '__main__':
-    log_it("-----------------------------------------------------------------")
+    log_it("--------------------------------START---------------------------------")
     if len(sys.argv) > 1 and '--test' in sys.argv:
 	DRY_RUN=True
 
@@ -118,7 +122,7 @@ if __name__ == '__main__':
 	    session_token = token_file_handle.readlines()[0].strip()
 	    token_file_handle.close()
 
-    log_it("RequestToken=%s" % session_token)
+    log_it("Got the RequestToken, %s" % session_token)
 
     # Redirect the user to the login url obtained
     # from kite.login_url(), and receive the request_token
@@ -127,7 +131,8 @@ if __name__ == '__main__':
     data = kite.generate_session("%s"%session_token, api_secret=API_SECRET_KEY)
     kite.set_access_token(data["access_token"])
 
-    if len(sys.argv) > 1 and '--test' not in sys.argv:
+    if len(sys.argv) == 1 or '--test' not in sys.argv:
+	log_it("Waiting until 9:17")
 	while True:
 	    tdt = datetime.datetime.today()
 	    hr = int(tdt.strftime("%H"))
@@ -140,6 +145,7 @@ if __name__ == '__main__':
 	    else:
 		break # You could be running after market hours
 
+    log_it("Calling FindOHOLStocks()")
     (BuySyms, SellSyms) = FindOHOLStocks()
     
     if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
@@ -176,10 +182,10 @@ if __name__ == '__main__':
 		    vcpt = int(BuySyms[bsym][1])
 		    cmp = float((cmps['NSE:%s'%bsym])['last_price'])
 		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt >= VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-			bprice = cmp+(cmp*(0.1/100))
+			bprice = round((cmp-(cmp*(0.1/100)))/0.05)*0.05
 			PlaceOrder('Buy', bsym, bprice, BuyOrders)
 		    else:
-			log_it("%s failed to meet cmp > c1 condition (vcpt=%.2f, cmp=%.2f, bprice=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (sym, vcpt, cmp, bprice, Vol5_buffer, VolInc, Vol_buffer))
+			log_it("%s failed to meet cmp > c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
 
 	    if(len(SellSyms.keys())>0):
 		SellOrders = {}
@@ -188,9 +194,9 @@ if __name__ == '__main__':
 		    vcpt = int(SellSyms[ssym][1])
 		    cmp = float((cmps['NSE:%s'%ssym])['last_price'])
 		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt >= VolInc and (cmp-(cmp*Vol_buffer)) < c1):
-			sprice = cmp-(cmp*(0.1/100))
+			sprice = RoundToTick((cmp-(cmp*(0.1/100))))
 			PlaceOrder('Sell', ssym, sprice, SellOrders)
 		    else:
-			log_it("%s failed to meet cmp < c1 condition (vcpt=%.2f, cmp=%.2f, sprice=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (sym, vcpt, cmp, sprice, Vol5_buffer, VolInc, Vol_buffer))
-    log_it("-----------------------------------------------------------------")
+			log_it("%s failed to meet cmp < c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
+    log_it("--------------------------------END---------------------------------")
 
