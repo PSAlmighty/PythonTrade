@@ -12,15 +12,9 @@ sys.path.append(MY_MOD_PATH)
 from credentials import API_KEY, API_SECRET_KEY
 from ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, VolInc
 from ConnectKite import GetKiteToken
+from params import *
 
-# Important parameters
-CAPITAL=14000
-#cap=CAPITAL*(80/100) # 80% of whole capital
-cap=CAPITAL
-SLPct=(1.2/100)
-ProfitPct=(1.2/100)
-TSLPct=(0.5/100)
-
+Interval = 60
 DRY_RUN=False
 
 def log_it(log_str):
@@ -52,6 +46,9 @@ def PlaceOrder(call, sym, rprice, Orders):
 	if DRY_RUN:
 	    log_it("Buy %d %s @ %d" % (numberOfStocks, sym, rprice))
 	else:
+	    if sym in Nifty100:
+		log_it("Buy %d %s @ %d - Skipping it as it is not part of Nifty100" % (numberOfStocks, sym, rprice))
+		return
 	    try:
 		order_id = kite.place_order(tradingsymbol=sym,
 	                                exchange=kite.EXCHANGE_NSE,
@@ -75,6 +72,9 @@ def PlaceOrder(call, sym, rprice, Orders):
 	if DRY_RUN:
 	    log_it("Sell %d %s @ %d" % (numberOfStocks, sym, rprice))
 	else:
+	    if sym in Nifty100:
+		log_it("Sell %d %s @ %d - Skipping it as it is not part of Nifty100" % (numberOfStocks, sym, rprice))
+		return
 	    try:
 		order_id = kite.place_order(tradingsymbol=sym,
 	                                exchange=kite.EXCHANGE_NSE,
