@@ -6,9 +6,9 @@ CAPITAL = 14000
 cap = CAPITAL
 
 # Stoploss/Profit/Trailing SL
-SLPct = (0.7/100)
-ProfitPct = (1.4/100)
-TSLPct = (0.3/100)
+SLPct = (1.2/100)
+ProfitPct = (1.2/100)
+TSLPct = (0.4/100)
 
 # Startegy params
 VolInc = 2

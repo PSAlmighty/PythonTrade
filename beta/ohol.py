@@ -624,6 +624,9 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
 		break
 	    time.sleep(10)
         TodayCandleData[sym] = GetScripCandleData(ndays, sym)
+	if utc not in TodayCandleData[sym].keys():
+	    log_it("Not able to get candle data for %s" % sym)
+	    return
 
     cdata = TodayCandleData[sym][utc]
 
