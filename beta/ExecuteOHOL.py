@@ -132,13 +132,13 @@ if __name__ == '__main__':
     kite.set_access_token(data["access_token"])
 
     if len(sys.argv) == 1 or '--test' not in sys.argv:
-	log_it("Waiting until 9:17")
+	log_it("Waiting until 9:18")
 	while True:
 	    tdt = datetime.datetime.today()
 	    hr = int(tdt.strftime("%H"))
 	    min = int(tdt.strftime("%M"))
 	    if hr == 9:
-		if min > 16:
+		if min > 17:
 		    break
 		else:
 		    time.sleep(2)
@@ -151,8 +151,6 @@ if __name__ == '__main__':
     if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
         jobs1 = []
         manager = multiprocessing.Manager()
-
-        cps = int(cap/(len(BuySyms.keys())+len(SellSyms.keys())))
 
 	PARALLEL=False
 	if PARALLEL:
@@ -182,9 +180,14 @@ if __name__ == '__main__':
 		    vcpt = int(BuySyms[bsym][1])
 		    cmp = float((cmps['NSE:%s'%bsym])['last_price'])
 		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt >= VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-			bprice = round((cmp-(cmp*(0.1/100)))/0.05)*0.05
-			PlaceOrder('Buy', bsym, bprice, BuyOrders)
+			bprice = RoundToTick((cmp+(cmp*(0.1/100))))
+			if bsym in Nifty100:
+			    BuySyms[bsym] = bprice
+			else:
+			    BuySyms.pop(bsym, None)
+			    log_it("Buy %s @ %.2f - Skipping it as it is not part of Nifty100" % (bsym, bprice))
 		    else:
+			BuySyms.pop(bsym, None)
 			log_it("%s failed to meet cmp > c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
 
 	    if(len(SellSyms.keys())>0):
@@ -195,8 +198,28 @@ if __name__ == '__main__':
 		    cmp = float((cmps['NSE:%s'%ssym])['last_price'])
 		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt >= VolInc and (cmp-(cmp*Vol_buffer)) < c1):
 			sprice = RoundToTick((cmp-(cmp*(0.1/100))))
-			PlaceOrder('Sell', ssym, sprice, SellOrders)
+			if ssym in Nifty100:
+			    SellSyms[ssym] = sprice
+			else:
+			    SellSyms.pop(ssym, None)
+			    log_it("Sell %d %s @ %.2f - Skipping it as it is not part of Nifty100" % (ssym, sprice))
 		    else:
+			SellSyms.pop(ssym, None)
 			log_it("%s failed to meet cmp < c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
-    log_it("--------------------------------END---------------------------------")
 
+	    if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
+		cps = int(cap)/(len(BuySyms.keys())+len(SellSyms.keys()))
+
+		if(len(BuySyms.keys())>0):
+		    for sym,price in BuySyms.items():
+			#print 'Placing Buy order for %s @ %.2f' % (sym, price)
+			PlaceOrder('Buy', sym, price, BuyOrders)
+
+		if(len(SellSyms.keys())>0):
+		    for sym,price in SellSyms.items():
+			#print 'Placing Sell order for %s @ %.2f' % (sym, price)
+			PlaceOrder('Sell', sym, price, SellOrders)
+	    else:
+		log_it("Nothing to Buy/Sell")
+
+    log_it("--------------------------------END---------------------------------")

@@ -641,6 +641,10 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms):
     #c2 = float(cdata[1][idx_close])
     #h2 = float(cdata[1][idx_high])
 
+    if o1 == l1 and o1 == h1:
+	log_it("Skipping %s as open is equal to low as well as high (o=%.2f, l=%.2f, h=%.2f)" % (sym, o1, l1, h1))
+	return
+
     if o1 == l1 or o1 == h1:
 	c1 = float(cdata[0][idx_close])
 	pvol = PastData[sym]['VOL']

@@ -11,7 +11,7 @@ ProfitPct = (1.2/100)
 TSLPct = (0.4/100)
 
 # Startegy params
-VolInc = 2
+VolInc = 1.8
 PriceInc = 0.2
 Vol_buffer = (0.2/100)
 Vol5_buffer = (0.3/100)
