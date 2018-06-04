@@ -46,9 +46,6 @@ def PlaceOrder(call, sym, rprice, Orders):
 	if DRY_RUN:
 	    log_it("Buy %d %s @ %d" % (numberOfStocks, sym, rprice))
 	else:
-	    if sym not in Nifty100:
-		log_it("Buy %d %s @ %d - Skipping it as it is not part of Nifty100" % (numberOfStocks, sym, rprice))
-		return
 	    try:
 		order_id = kite.place_order(tradingsymbol=sym,
 	                                exchange=kite.EXCHANGE_NSE,
@@ -72,9 +69,6 @@ def PlaceOrder(call, sym, rprice, Orders):
 	if DRY_RUN:
 	    log_it("Sell %d %s @ %d" % (numberOfStocks, sym, rprice))
 	else:
-	    if sym not in Nifty100:
-		log_it("Sell %d %s @ %d - Skipping it as it is not part of Nifty100" % (numberOfStocks, sym, rprice))
-		return
 	    try:
 		order_id = kite.place_order(tradingsymbol=sym,
 	                                exchange=kite.EXCHANGE_NSE,
