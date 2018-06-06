@@ -140,7 +140,7 @@ if __name__ == '__main__':
 		break # You could be running after market hours
 
     log_it("Calling FindOHOLStocks()")
-    (BuySyms, SellSyms) = FindOHOLStocks()
+    (BuySyms, SellSyms, SkipSyms) = FindOHOLStocks()
     
     if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
         jobs1 = []
@@ -173,13 +173,16 @@ if __name__ == '__main__':
 		    c1 = float(BuySyms[bsym][0])
 		    vcpt = int(BuySyms[bsym][1])
 		    cmp = float((cmps['NSE:%s'%bsym])['last_price'])
-		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt >= VolInc and (cmp+(cmp*Vol_buffer)) > c1):
+		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt >= VolInc and vcpt < 5 and (cmp+(cmp*Vol_buffer)) > c1):
 			bprice = RoundToTick((cmp+(cmp*(0.1/100))))
-			if bsym in Nifty100:
+			if bsym in SkipSyms:
+			    #BuySyms.pop(bsym, None)
+			    log_it("Buy %s - Open is equal to low as well as high" % bsym)
+			elif bsym in Nifty100:
 			    BuySyms[bsym] = bprice
 			else:
 			    BuySyms.pop(bsym, None)
-			    log_it("Buy %s @ %.2f - Skipping it as it is not part of Nifty100" % (bsym, bprice))
+			    log_it("Buy %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (bsym, bprice))
 		    else:
 			BuySyms.pop(bsym, None)
 			log_it("%s failed to meet cmp > c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
@@ -190,13 +193,16 @@ if __name__ == '__main__':
 		    c1 = float(SellSyms[ssym][0])
 		    vcpt = int(SellSyms[ssym][1])
 		    cmp = float((cmps['NSE:%s'%ssym])['last_price'])
-		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt >= VolInc and (cmp-(cmp*Vol_buffer)) < c1):
+		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt >= VolInc and vcpt < 5 and (cmp-(cmp*Vol_buffer)) < c1):
 			sprice = RoundToTick((cmp-(cmp*(0.1/100))))
-			if ssym in Nifty100:
+			if ssym in SkipSyms:
+			    #SellSyms.pop(ssym, None)
+			    log_it("Sell %s - Open is equal to low as well as high" % ssym)
+			elif ssym in Nifty100:
 			    SellSyms[ssym] = sprice
 			else:
 			    SellSyms.pop(ssym, None)
-			    log_it("Sell %d %s @ %.2f - Skipping it as it is not part of Nifty100" % (ssym, sprice))
+			    log_it("Sell %d %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (ssym, sprice))
 		    else:
 			SellSyms.pop(ssym, None)
 			log_it("%s failed to meet cmp < c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
