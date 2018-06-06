@@ -178,7 +178,7 @@ if __name__ == '__main__':
 			if bsym in SkipSyms:
 			    #BuySyms.pop(bsym, None)
 			    log_it("Buy %s - Open is equal to low as well as high" % bsym)
-			elif bsym in Nifty100:
+			if bsym in Nifty100:
 			    BuySyms[bsym] = bprice
 			else:
 			    BuySyms.pop(bsym, None)
@@ -198,7 +198,7 @@ if __name__ == '__main__':
 			if ssym in SkipSyms:
 			    #SellSyms.pop(ssym, None)
 			    log_it("Sell %s - Open is equal to low as well as high" % ssym)
-			elif ssym in Nifty100:
+			if ssym in Nifty100:
 			    SellSyms[ssym] = sprice
 			else:
 			    SellSyms.pop(ssym, None)
