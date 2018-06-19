@@ -44,7 +44,7 @@ def GetURLData(p, sym, candle):
 	url = 'https://finance.google.com/finance/getprices?x=NSE&q=%s&f=d,c,h,l,o,v&p=%sd' % (sym.replace('&','%26'), p)
     else:
 	url = 'https://finance.google.com/finance/getprices?x=NSE&q=%s&f=d,c,h,l,o,v&p=%sd&i=%s' % (sym.replace('&','%26'), p, Interval)
-    log_it("Getting %s day(s) data for %s from %s" % (p, sym, url))
+    #log_it("Getting %s day(s) data for %s from %s" % (p, sym, url))
     req = urllib2.Request(url)
     response = urllib2.urlopen(req)
     content = csv.reader(response.read().splitlines()[7:])
@@ -58,7 +58,7 @@ def GetDailyData(sym):
 	    data_cache = json.load(sym_file_handle)
 	    sym_file_handle.close()
 	    if len(data_cache) > 0:
-		log_it("Getting data for %s from %s" % (sym, sym_cache_file))
+		#log_it("Getting data for %s from %s" % (sym, sym_cache_file))
 		return data_cache
     data = {}
     content = GetURLData(ndays+8, sym, False)
@@ -86,7 +86,7 @@ def GetScripCandleData(days, sym):
 		data_cache = json.load(sym_file_handle)
 		sym_file_handle.close()
 		if len(data_cache) > 0:
-		    log_it("Getting data for %s from %s" % (sym, sym_cache_file))
+		    #log_it("Getting data for %s from %s" % (sym, sym_cache_file))
 		    return data_cache
     data = {}
     content = GetURLData(days, sym, True)
@@ -186,37 +186,47 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms, SkipSyms):
     if sym not in PastData.keys():
 	return
 
-    #c2 = float(cdata[1][idx_close])
-    #h2 = float(cdata[1][idx_high])
-
     if o1 == l1 and o1 == h1:
 	SkipSyms.append(sym)
-	#log_it("Skipping %s as open is equal to low as well as high (o=%.2f, l=%.2f, h=%.2f)" % (sym, o1, l1, h1))
-	#return
 
     if o1 == l1 or o1 == h1:
-	c1 = float(cdata[0][idx_close])
-	pvol = PastData[sym]['VOL']
 	pclose = PastData[sym]['CLOSE']
 	pcpt = abs((o1-pclose)/pclose)*100
-	vcpt = (c_candle_vol/pvol)*100
-	print sym, pcpt, PriceInc, vcpt, VolInc
-	if pcpt < PriceInc or vcpt < VolInc:
-	    print sym, "Returning"
-	    return
-	#nse_quote = nse.get_quote(sym)
-	#cmp = nse_quote['lastPrice']
-	#cmp = c2
-	#cmp = GetNSEPrice(sym)
-	values = [c1, vcpt]
+
+	call=''
 	if o1 == l1 and pclose <= o1:
-	    #if (vcpt > 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt > VolInc and (cmp+(cmp*Vol_buffer)) > c1):
-		log_it("Considering %s (o=%.2f, l=%.2f, pclose=%.2f)" % (sym, o1, l1, pclose))
-		BuySyms[sym] = values
-	elif o1 == h1 and pclose >= o1:
-	    #if (vcpt > 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt > VolInc and (cmp-(cmp*Vol_buffer)) < c1):
-		log_it("Considering %s (o=%.2f, h=%.2f, pclose=%.2f)" % (sym, o1, h1, pclose))
-		SellSyms[sym] = values
+	    call='Buy'
+
+	if o1 == h1 and pclose >= o1:
+	    call='Sell'
+
+	if call != 'Buy' and call != 'Sell':
+	    return
+
+	if pcpt < PriceInc:
+	    log_it("Rejecting a '%s' call on %s as pcpt < PriceInc (%.2f%%, %.2f%%)" % (call, sym, pcpt, PriceInc))
+	    return
+
+	pvol = PastData[sym]['VOL']
+	vcpt = (c_candle_vol/pvol)*100
+	if vcpt < VolInc:
+	    log_it("Rejecting a '%s' call on %s as vcpt < VolInc (%.2f%%, %.2f%%)" % (call, sym, vcpt, VolInc))
+	    return
+
+	if call == 'Buy':
+	    v2cpt = (int(cdata[1][idx_vol])/int(OneYearData[sym][pUTC][idx_vol]))*100
+	    #p2cpt = ((float(cdata[1][idx_open])-pclose)/pclose)*100
+	    if v2cpt < 1.1:
+		log_it("Rejecting %s as v2cpt < 1.1 (%.2f%% < 1.1)" % (sym, vcpt))
+		return
+
+	values = [o1, vcpt]
+	if call == 'Buy':
+	    log_it("Considering a Buy on %s (o=%.2f, l=%.2f, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, l1, pclose, vcpt, pcpt))
+	    BuySyms[sym] = values
+	elif call == 'Sell':
+	    log_it("Considering a Sell on %s (o=%.2f, h=%.2f, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, h1, pclose, vcpt, pcpt))
+	    SellSyms[sym] = values
 
 def LoadPastData():
     global utc

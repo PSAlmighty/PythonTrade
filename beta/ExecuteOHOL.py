@@ -5,6 +5,8 @@ from __future__ import division
 import os, sys, datetime, time
 import urllib2, csv, multiprocessing
 from kiteconnect.connect import KiteConnect
+import pandas as pd
+from StringIO import StringIO
 
 MY_MOD_PATH="%s" % os.getcwd()
 sys.path.append(MY_MOD_PATH)
@@ -31,6 +33,16 @@ def GetAbsolutes(price):
     if tsl < 1:
         tsl=1
     return (tgt, sl, tsl)
+
+def GetNiftyScrips(n):
+    try:
+	url='https://www.nseindia.com/content/indices/ind_nifty%dlist.csv' % n
+	req = urllib2.Request(url)
+	req.add_header('User-Agent', 'Mozilla/5.0')
+	response = urllib2.urlopen(req)
+	return pd.read_csv(StringIO(response.read()), usecols=[2]).values.flatten()
+    except:
+	return []
 
 def PlaceOrder(call, sym, rprice, Orders):
     # Derive price to buy/sell from recommended price
@@ -94,6 +106,12 @@ if __name__ == '__main__':
     if len(sys.argv) > 1 and '--test' in sys.argv:
 	DRY_RUN=True
 
+    # Get Nifty100
+    Nifty100 = GetNiftyScrips(100)
+    if Nifty100 is None or len(Nifty100) == 0:
+	log_it("Using static Nifty100 list")
+	Nifty100.extend(Nifty100Static)
+
     kite = KiteConnect(api_key=API_KEY)
     session_token = ''
     AutoFetch=True
@@ -135,7 +153,7 @@ if __name__ == '__main__':
 		if min > 17:
 		    break
 		else:
-		    time.sleep(2)
+		    time.sleep(8)
 	    else:
 		break # You could be running after market hours
 
@@ -170,42 +188,42 @@ if __name__ == '__main__':
 	    if(len(BuySyms.keys())>0):
 		BuyOrders = {}
 		for bsym in BuySyms.keys():
-		    c1 = float(BuySyms[bsym][0])
-		    vcpt = int(BuySyms[bsym][1])
+		    o1 = float(BuySyms[bsym][0])
+		    vcpt = float(BuySyms[bsym][1])
 		    cmp = float((cmps['NSE:%s'%bsym])['last_price'])
-		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > c1) or (vcpt >= VolInc and vcpt < 5 and (cmp+(cmp*Vol_buffer)) > c1):
+		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > o1) or (vcpt >= VolInc and vcpt < 5 and (cmp+(cmp*Vol_buffer)) > o1):
 			bprice = RoundToTick((cmp+(cmp*(0.1/100))))
 			if bsym in SkipSyms:
 			    #BuySyms.pop(bsym, None)
 			    log_it("Buy %s - Open is equal to low as well as high" % bsym)
-			if bsym in Nifty100:
+			if OnlyNifty == False or bsym in Nifty100:
 			    BuySyms[bsym] = bprice
 			else:
 			    BuySyms.pop(bsym, None)
 			    log_it("Buy %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (bsym, bprice))
 		    else:
 			BuySyms.pop(bsym, None)
-			log_it("%s failed to meet cmp > c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
+			log_it("Buy: %s failed to meet cmp > o1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
 
 	    if(len(SellSyms.keys())>0):
 		SellOrders = {}
 		for ssym in SellSyms.keys():
-		    c1 = float(SellSyms[ssym][0])
-		    vcpt = int(SellSyms[ssym][1])
+		    o1 = float(SellSyms[ssym][0])
+		    vcpt = float(SellSyms[ssym][1])
 		    cmp = float((cmps['NSE:%s'%ssym])['last_price'])
-		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < c1) or (vcpt >= VolInc and vcpt < 5 and (cmp-(cmp*Vol_buffer)) < c1):
+		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < o1) or (vcpt >= VolInc and vcpt < 5 and (cmp-(cmp*Vol_buffer)) < o1):
 			sprice = RoundToTick((cmp-(cmp*(0.1/100))))
 			if ssym in SkipSyms:
 			    #SellSyms.pop(ssym, None)
 			    log_it("Sell %s - Open is equal to low as well as high" % ssym)
-			if ssym in Nifty100:
+			if OnlyNifty == False or ssym in Nifty100:
 			    SellSyms[ssym] = sprice
 			else:
 			    SellSyms.pop(ssym, None)
-			    log_it("Sell %d %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (ssym, sprice))
+			    log_it("Sell %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (ssym, sprice))
 		    else:
 			SellSyms.pop(ssym, None)
-			log_it("%s failed to meet cmp < c1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
+			log_it("Sell: %s failed to meet cmp < o1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
 
 	    if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
 		cps = int(cap)/(len(BuySyms.keys())+len(SellSyms.keys()))
