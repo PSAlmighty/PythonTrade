@@ -181,8 +181,9 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms, SkipSyms):
     h1 = float(cdata[0][idx_high])
     l1 = float(cdata[0][idx_low])
     o1 = float(cdata[0][idx_open])
+    c1 = float(cdata[0][idx_close])
 
-    c_candle_vol=int(cdata[0][idx_vol])
+    v1 = c_candle_vol=int(cdata[0][idx_vol])
     if sym not in PastData.keys():
 	return
 
@@ -214,18 +215,18 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms, SkipSyms):
 	    return
 
 	if call == 'Buy':
-	    v2cpt = (int(cdata[1][idx_vol])/int(OneYearData[sym][pUTC][idx_vol]))*100
+	    v2cpt = (int(cdata[1][idx_vol])/pvol)*100
 	    #p2cpt = ((float(cdata[1][idx_open])-pclose)/pclose)*100
-	    if v2cpt < 1.1:
-		log_it("Rejecting %s as v2cpt < 1.1 (%.2f%% < 1.1)" % (sym, vcpt))
+	    if v2cpt < 0.9:
+		log_it("Rejecting %s as v2cpt < 1.1 (%.2f%% < 1.1)" % (sym, v2cpt))
 		return
 
 	values = [o1, vcpt]
 	if call == 'Buy':
-	    log_it("Considering a Buy on %s (o=%.2f, l=%.2f, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, l1, pclose, vcpt, pcpt))
+	    log_it("Considering a Buy on %s (o=%.2f, l=%.2f, c=%.2f, v=%d, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, l1,c1, v1, pclose, vcpt, pcpt))
 	    BuySyms[sym] = values
 	elif call == 'Sell':
-	    log_it("Considering a Sell on %s (o=%.2f, h=%.2f, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, h1, pclose, vcpt, pcpt))
+	    log_it("Considering a Sell on %s (o=%.2f, h=%.2f, c=%.2f, v=%d, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, h1, c1, pclose, v1, vcpt, pcpt))
 	    SellSyms[sym] = values
 
 def LoadPastData():

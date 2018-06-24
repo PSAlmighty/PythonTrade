@@ -92,7 +92,7 @@ def PlaceOrder(call, sym, rprice, Orders):
 	                                price=price,
 	                                squareoff=tgt,
 	                                stoploss=sl,
-	                                trailing_stoploss=tsl
+	                                trailing_stoploss=0
 	                                )
 		OrderDetails = [price, tgt, sl, tsl]
 		Orders[order_id] = OrderDetails
@@ -203,7 +203,7 @@ if __name__ == '__main__':
 			    log_it("Buy %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (bsym, bprice))
 		    else:
 			BuySyms.pop(bsym, None)
-			log_it("Buy: %s failed to meet cmp > o1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
+			log_it("Buy: %s failed to meet cmp > o1 condition (vcpt=%.2f, cmp=%.2f, o1=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, o1,  Vol5_buffer, VolInc, Vol_buffer))
 
 	    if(len(SellSyms.keys())>0):
 		SellOrders = {}
@@ -223,7 +223,7 @@ if __name__ == '__main__':
 			    log_it("Sell %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (ssym, sprice))
 		    else:
 			SellSyms.pop(ssym, None)
-			log_it("Sell: %s failed to meet cmp < o1 condition (vcpt=%.2f, cmp=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, Vol5_buffer, VolInc, Vol_buffer))
+			log_it("Sell: %s failed to meet cmp < o1 condition (vcpt=%.2f, cmp=%.2f, o1=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, o1, Vol5_buffer, VolInc, Vol_buffer))
 
 	    if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
 		cps = int(cap)/(len(BuySyms.keys())+len(SellSyms.keys()))
