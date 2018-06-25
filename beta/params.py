@@ -9,8 +9,6 @@ cap = CAPITAL
 SLPct = (1.1/100)
 ProfitPct = (1.1/100)
 TSLPct = 0
-#TSLPct = (2/100)
-#TSLPct = (2/100)
 
 # Startegy params
 VolInc = 1.8

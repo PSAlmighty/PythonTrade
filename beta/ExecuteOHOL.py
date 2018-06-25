@@ -11,6 +11,7 @@ from StringIO import StringIO
 MY_MOD_PATH="%s" % os.getcwd()
 sys.path.append(MY_MOD_PATH)
 
+import margin
 from credentials import API_KEY, API_SECRET_KEY
 from ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, VolInc
 from ConnectKite import GetKiteToken
@@ -30,7 +31,7 @@ def GetAbsolutes(price):
     tgt=RoundToTick((float(price) * ProfitPct))
     sl=RoundToTick((float(price) * SLPct))
     tsl=RoundToTick((float(price) * TSLPct))
-    if tsl < 1:
+    if TSLPct > 0 and tsl < 1:
         tsl=1
     return (tgt, sl, tsl)
 
@@ -48,10 +49,9 @@ def PlaceOrder(call, sym, rprice, Orders):
     # Derive price to buy/sell from recommended price
     price = round(float(rprice), 2)
 
-    numberOfStocks = int((cps*int(MIS[sym]))/price)
-
     # Get Ticks values for SqOff, SL, and Trailing SL used for BO
     (tgt, sl, tsl) = GetAbsolutes(price)
+    numberOfStocks = int(margin.MarginCal(sym, cps, price, sl, call))
 
     # Place a BO order
     if (call == 'Buy'):
@@ -92,7 +92,7 @@ def PlaceOrder(call, sym, rprice, Orders):
 	                                price=price,
 	                                squareoff=tgt,
 	                                stoploss=sl,
-	                                trailing_stoploss=0
+	                                trailing_stoploss=tsl
 	                                )
 		OrderDetails = [price, tgt, sl, tsl]
 		Orders[order_id] = OrderDetails
@@ -124,8 +124,9 @@ if __name__ == '__main__':
 		if session_token is None or session_token == '':
 		    try_count+=1
 		else:
-		    break;
-	    except:
+		    break
+	    except Exception, err:
+		print(err)
 		try_count+=1
     else:
 	raw_input('Add token to token file')
