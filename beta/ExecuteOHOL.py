@@ -13,7 +13,7 @@ sys.path.append(MY_MOD_PATH)
 
 import margin
 from credentials import API_KEY, API_SECRET_KEY
-from ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, VolInc
+from ohol import FindOHOLStocks, LoadPastData, MIS, PastData, TODAY, Vol5_buffer, Vol_buffer, BuyVolInc, SellVolInc
 from ConnectKite import GetKiteToken
 from params import *
 
@@ -27,12 +27,17 @@ Tick=(5/100)
 def RoundToTick(price):
     return round(price/Tick)*Tick
 
-def GetAbsolutes(price):
-    tgt=RoundToTick((float(price) * ProfitPct))
-    sl=RoundToTick((float(price) * SLPct))
-    tsl=RoundToTick((float(price) * TSLPct))
-    if TSLPct > 0 and tsl < 1:
-        tsl=1
+def GetAbsolutes(price, vcpt):
+    if vcpt >= HeavyVolMark:
+	tgt = RoundToTick((float(price) * ProfitPctV5))
+	sl = RoundToTick((float(price) * SLPctV5))
+    else:
+	tgt = RoundToTick((float(price) * ProfitPct))
+	sl = RoundToTick((float(price) * SLPct))
+
+    tsl = RoundToTick((float(price) * TSLPct))
+    if tsl < 1:
+	tsl = 1
     return (tgt, sl, tsl)
 
 def GetNiftyScrips(n):
@@ -45,12 +50,18 @@ def GetNiftyScrips(n):
     except:
 	return []
 
-def PlaceOrder(call, sym, rprice, Orders):
+def GetMargin():
+    cap = round(float(kite.margins('equity')['net'])*ALLOCATION)
+    if cap is None or cap == '' or cap == 0:
+	cap = round(CAPITAL*ALLOCATION)
+    return cap
+
+def PlaceOrder(call, sym, rprice, vcpt, Orders):
     # Derive price to buy/sell from recommended price
     price = round(float(rprice), 2)
 
     # Get Ticks values for SqOff, SL, and Trailing SL used for BO
-    (tgt, sl, tsl) = GetAbsolutes(price)
+    (tgt, sl, tsl) = GetAbsolutes(price, vcpt)
     numberOfStocks = int(margin.MarginCal(sym, cps, price, sl, call))
 
     # Place a BO order
@@ -144,6 +155,9 @@ if __name__ == '__main__':
     data = kite.generate_session("%s"%session_token, api_secret=API_SECRET_KEY)
     kite.set_access_token(data["access_token"])
 
+    # Get working capital
+    cap = GetMargin()
+
     if len(sys.argv) == 1 or '--test' not in sys.argv:
 	log_it("Waiting until 9:18")
 	while True:
@@ -192,19 +206,19 @@ if __name__ == '__main__':
 		    o1 = float(BuySyms[bsym][0])
 		    vcpt = float(BuySyms[bsym][1])
 		    cmp = float((cmps['NSE:%s'%bsym])['last_price'])
-		    if (vcpt >= 5 and (cmp+(cmp*Vol5_buffer)) > o1) or (vcpt >= VolInc and vcpt < 5 and (cmp+(cmp*Vol_buffer)) > o1):
+		    if (vcpt >= HeavyVolMark and (cmp+(cmp*Vol5_buffer)) > o1) or (vcpt >= BuyVolInc and vcpt < HeavyVolMark and (cmp+(cmp*Vol_buffer)) > o1):
 			bprice = RoundToTick((cmp+(cmp*(0.1/100))))
 			if bsym in SkipSyms:
 			    #BuySyms.pop(bsym, None)
 			    log_it("Buy %s - Open is equal to low as well as high" % bsym)
 			if OnlyNifty == False or bsym in Nifty100:
-			    BuySyms[bsym] = bprice
+			    BuySyms[bsym] = [bprice, vcpt]
 			else:
 			    BuySyms.pop(bsym, None)
 			    log_it("Buy %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (bsym, bprice))
 		    else:
 			BuySyms.pop(bsym, None)
-			log_it("Buy: %s failed to meet cmp > o1 condition (vcpt=%.2f, cmp=%.2f, o1=%.2f, Vol5_buffer=%.3f, VolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, o1,  Vol5_buffer, VolInc, Vol_buffer))
+			log_it("Buy: %s failed to meet cmp > o1 condition (vcpt=%.2f, cmp=%.2f, o1=%.2f, Vol5_buffer=%.3f, BuyVolInc=%.2f, Vol_buffer=%.3f)" % (bsym, vcpt, cmp, o1,  Vol5_buffer, BuyVolInc, Vol_buffer))
 
 	    if(len(SellSyms.keys())>0):
 		SellOrders = {}
@@ -212,32 +226,30 @@ if __name__ == '__main__':
 		    o1 = float(SellSyms[ssym][0])
 		    vcpt = float(SellSyms[ssym][1])
 		    cmp = float((cmps['NSE:%s'%ssym])['last_price'])
-		    if (vcpt >= 5 and (cmp-(cmp*Vol5_buffer)) < o1) or (vcpt >= VolInc and vcpt < 5 and (cmp-(cmp*Vol_buffer)) < o1):
+		    if (vcpt >= HeavyVolMark and (cmp-(cmp*Vol5_buffer)) < o1) or (vcpt >= SellVolInc and vcpt < HeavyVolMark and (cmp-(cmp*Vol_buffer)) < o1):
 			sprice = RoundToTick((cmp-(cmp*(0.1/100))))
 			if ssym in SkipSyms:
 			    #SellSyms.pop(ssym, None)
 			    log_it("Sell %s - Open is equal to low as well as high" % ssym)
 			if OnlyNifty == False or ssym in Nifty100:
-			    SellSyms[ssym] = sprice
+			    SellSyms[ssym] = [sprice, vcpt]
 			else:
 			    SellSyms.pop(ssym, None)
 			    log_it("Sell %s @ %.2f - Selected but skipping as it is not part of Nifty100" % (ssym, sprice))
 		    else:
 			SellSyms.pop(ssym, None)
-			log_it("Sell: %s failed to meet cmp < o1 condition (vcpt=%.2f, cmp=%.2f, o1=%.2f, Vol5_buffer=%.2f, VolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, o1, Vol5_buffer, VolInc, Vol_buffer))
+			log_it("Sell: %s failed to meet cmp < o1 condition (vcpt=%.2f, cmp=%.2f, o1=%.2f, Vol5_buffer=%.2f, SellVolInc=%.2f, Vol_buffer=%.2f)" % (ssym, vcpt, cmp, o1, Vol5_buffer, SellVolInc, Vol_buffer))
 
 	    if (len(BuySyms.keys())+len(SellSyms.keys())) > 0:
 		cps = int(cap)/(len(BuySyms.keys())+len(SellSyms.keys()))
 
 		if(len(BuySyms.keys())>0):
-		    for sym,price in BuySyms.items():
-			#print 'Placing Buy order for %s @ %.2f' % (sym, price)
-			PlaceOrder('Buy', sym, price, BuyOrders)
+		    for sym,arr in BuySyms.items():
+			PlaceOrder('Buy', sym, arr[0], arr[1], BuyOrders)
 
 		if(len(SellSyms.keys())>0):
-		    for sym,price in SellSyms.items():
-			#print 'Placing Sell order for %s @ %.2f' % (sym, price)
-			PlaceOrder('Sell', sym, price, SellOrders)
+		    for sym,arr in SellSyms.items():
+			PlaceOrder('Sell', sym, arr[0], arr[1], SellOrders)
 	    else:
 		log_it("Nothing to Buy/Sell")
 

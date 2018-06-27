@@ -9,7 +9,7 @@ import socket, re
 MY_MOD_PATH="%s" % os.getcwd()
 sys.path.append(MY_MOD_PATH)
 
-from params import Nsyms, MIS, VolInc, PriceInc, Vol_buffer, Vol5_buffer
+from params import Nsyms, MIS, BuyVolInc, SellVolInc, PriceInc, Vol_buffer, Vol5_buffer
 
 socket.setdefaulttimeout(10)
 os.environ['TZ'] = 'Asia/Calcutta'
@@ -210,22 +210,28 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms, SkipSyms):
 
 	pvol = PastData[sym]['VOL']
 	vcpt = (c_candle_vol/pvol)*100
-	if vcpt < VolInc:
-	    log_it("Rejecting a '%s' call on %s as vcpt < VolInc (%.2f%%, %.2f%%)" % (call, sym, vcpt, VolInc))
-	    return
-
-	if call == 'Buy':
-	    v2cpt = (int(cdata[1][idx_vol])/pvol)*100
-	    #p2cpt = ((float(cdata[1][idx_open])-pclose)/pclose)*100
-	    if v2cpt < 0.9:
-		log_it("Rejecting %s as v2cpt < 1.1 (%.2f%% < 1.1)" % (sym, v2cpt))
-		return
 
 	values = [o1, vcpt]
 	if call == 'Buy':
+	    if vcpt < BuyVolInc:
+		log_it("Rejecting a '%s' call on %s as vcpt < BuyVolInc (%.2f%%, %.2f%%)" % (call, sym, vcpt, BuyVolInc))
+		return
+
+	    c2 = float(cdata[1][idx_close])
+	    if c2+(c2*(0.2/100)) < c1:
+		log_it("Rejecting a '%s' call on %s as c2+(c2*(0.2/100)) < c1 (%.2f, %.2f)" % (call, sym, c2+(c2*(0.2/100)), c1))
+		return
 	    log_it("Considering a Buy on %s (o=%.2f, l=%.2f, c=%.2f, v=%d, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, l1,c1, v1, pclose, vcpt, pcpt))
 	    BuySyms[sym] = values
 	elif call == 'Sell':
+	    if vcpt < SellVolInc:
+		log_it("Rejecting a '%s' call on %s as vcpt < SellVolInc (%.2f%%, %.2f%%)" % (call, sym, vcpt, SellVolInc))
+		return
+
+	    c2 = float(cdata[1][idx_close])
+	    if c2-(c2*(0.2/100)) > c1:
+		log_it("Rejecting a '%s' call on %s as c2-(c2*(0.2/100)) < c1 (%.2f, %.2f)" % (call, sym, c2-(c2*(0.2/100)), c1))
+		return
 	    log_it("Considering a Sell on %s (o=%.2f, h=%.2f, c=%.2f, v=%d, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, h1, c1, pclose, v1, vcpt, pcpt))
 	    SellSyms[sym] = values
 

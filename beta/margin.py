@@ -5,7 +5,7 @@ MarginData = None
 
 # Bracket and cover order Margins calculation for Equity:
 def DownloadMarginData():
-    print 'Downloading Margin data from https://api.kite.trade/margins/equity'
+    print '%s: Downloading Margin data from https://api.kite.trade/margins/equity' % datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S")
     return requests.get('https://api.kite.trade/margins/equity').json()
 
 def MarginCal(sym, cps, price, sl, transaction_type):
