@@ -214,23 +214,34 @@ def OHOLStrategy(sym, PastData, BuySyms, SellSyms, SkipSyms):
 	values = [o1, vcpt]
 	if call == 'Buy':
 	    if vcpt < BuyVolInc:
-		log_it("Rejecting a '%s' call on %s as vcpt < BuyVolInc (%.2f%%, %.2f%%)" % (call, sym, vcpt, BuyVolInc))
+		log_it("Rejecting a 'Buy' call on %s as vcpt < BuyVolInc (%.2f%%, %.2f%%)" % (sym, vcpt, BuyVolInc))
 		return
 
 	    c2 = float(cdata[1][idx_close])
-	    if c2+(c2*(0.2/100)) < c1:
-		log_it("Rejecting a '%s' call on %s as c2+(c2*(0.2/100)) < c1 (%.2f, %.2f)" % (call, sym, c2+(c2*(0.2/100)), c1))
+	    if c2+(c2*(0.1/100)) < c1:
+		log_it("Rejecting a 'Buy' call on %s as c2+(c2*(0.2/100)) < c1 (%.2f, %.2f)" % (sym, c2+((0.2/100)*c2), c1))
 		return
+
+	    v2cpt = (int(cdata[1][idx_vol])/pvol)*100
+	    if v2cpt < 0.8:
+		log_it("Rejecting a 'Buy' call on %s as v2cpt < 0.8 (%.2f%% < 0.8%%)" % (sym, v2cpt))
+		return
+
 	    log_it("Considering a Buy on %s (o=%.2f, l=%.2f, c=%.2f, v=%d, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, l1,c1, v1, pclose, vcpt, pcpt))
 	    BuySyms[sym] = values
 	elif call == 'Sell':
 	    if vcpt < SellVolInc:
-		log_it("Rejecting a '%s' call on %s as vcpt < SellVolInc (%.2f%%, %.2f%%)" % (call, sym, vcpt, SellVolInc))
+		log_it("Rejecting a 'Sell' call on %s as vcpt < SellVolInc (%.2f%%, %.2f%%)" % (sym, vcpt, SellVolInc))
+		return
+
+	    v2cpt = (int(cdata[1][idx_vol])/pvol)*100
+	    if v2cpt < 0.5:
+		log_it("Rejecting a 'Sell' call on %s as v2cpt < 0.5 (%.2f%% < 0.5%%)" % (sym, v2cpt))
 		return
 
 	    c2 = float(cdata[1][idx_close])
-	    if c2-(c2*(0.2/100)) > c1:
-		log_it("Rejecting a '%s' call on %s as c2-(c2*(0.2/100)) < c1 (%.2f, %.2f)" % (call, sym, c2-(c2*(0.2/100)), c1))
+	    if c2-(c2*(0.1/100)) > c1:
+		log_it("Rejecting a 'Sell' call on %s as c2-(c2*(0.1/100)) < c1 (%.2f, %.2f)" % (sym, c2-((0.1/100)*c2), c1))
 		return
 	    log_it("Considering a Sell on %s (o=%.2f, h=%.2f, c=%.2f, v=%d, pclose=%.2f, vcpt=%.2f%%, pcpt=%.2f%%)" % (sym, o1, h1, c1, pclose, v1, vcpt, pcpt))
 	    SellSyms[sym] = values

@@ -3,7 +3,7 @@
 from __future__ import division
 
 # Capital
-CAPITAL = 11000
+CAPITAL = 10000
 ALLOCATION = (80/100)
 
 # Stoploss/Profit/Trailing SL
@@ -14,8 +14,8 @@ ProfitPct = (1.1/100)
 TSLPct = 0
 
 # Startegy params
-BuyVolInc = 1.8
-SellVolInc = 1.4
+BuyVolInc = 1.85
+SellVolInc = 1.5
 HeavyVolMark = 5
 PriceInc = 0.2
 #Vol_buffer = (0.2/100)

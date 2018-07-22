@@ -36,7 +36,7 @@ def GetAbsolutes(price, vcpt):
 	sl = RoundToTick((float(price) * SLPct))
 
     tsl = RoundToTick((float(price) * TSLPct))
-    if tsl < 1:
+    if TSLPct > 0 and tsl < 1:
 	tsl = 1
     return (tgt, sl, tsl)
 
